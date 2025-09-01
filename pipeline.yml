@@ -64,7 +64,7 @@ Resources:
     Properties:
       AuthType: PERSONAL_ACCESS_TOKEN
       ServerType: GITHUB
-      Token: '{{resolve:secretsmanager:YOUR_GITHUB_TOKEN_NAME:SecretString:YOUR_GITHUB_KEY}}'
+      Token: '{{resolve:secretsmanager:AWS_TOKEN:SecretString}}'
 
   CodeBuildProject:
     Type: 'AWS::CodeBuild::Project'
@@ -221,7 +221,7 @@ Resources:
                 Repo: !Ref GitHubRepository
                 Branch: !Ref GitHubBranch
                 PollForSourceChanges: false
-                OAuthToken: '{{resolve:secretsmanager:YOUR_GITHUB_TOKEN_NAME:SecretString}}'
+                OAuthToken: '{{resolve:secretsmanager:AWS_TOKEN:SecretString}}'
               OutputArtifacts:
                 - Name: SourceCode
         - Name: Build
@@ -290,7 +290,7 @@ Resources:
     Properties:
       Authentication: GITHUB_HMAC
       AuthenticationConfiguration:
-        SecretToken: '{{resolve:secretsmanager:YOUR_GITHUB_TOKEN_NAME:SecretString}}'
+        SecretToken: '{{resolve:secretsmanager:AWS_TOKEN:SecretString}}'
       RegisterWithThirdParty: true
       Filters:
         - JsonPath: $.ref
