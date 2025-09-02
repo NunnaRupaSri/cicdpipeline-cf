@@ -103,8 +103,19 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess
-        - arn:aws:s3:::github-cicd-cf1-artifacts/github-cicd-cf1-Code/*
-
+      Policies:
+        - PolicyName: PipelineS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:GetObjectVersion
+                  - s3:GetBucketAcl
+                  - s3:GetBucketLocation
+                Resource: !Sub 'arn:aws:s3:::${ArtifactBucket}/*'     
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
