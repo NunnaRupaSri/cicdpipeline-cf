@@ -101,7 +101,7 @@ Resources:
           Value: NodeJsServer
           Type: KEY_AND_VALUE
 
-  PipelineRole:
+  CodePipelineRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
