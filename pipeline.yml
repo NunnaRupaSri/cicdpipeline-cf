@@ -1,26 +1,23 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CI/CD pipeline for GitHub projects
+Description: CI/CD Pipeline for Node.js App using GitHub, CodeBuild, CodeDeploy, and CodePipeline
 
 Parameters:
-  GitHubOwner:
+  GitHubRepo:
     Type: String
-    AllowedPattern: '[A-Za-z0-9-_]+'
-    Default: GITHUB_OWNER
-  GitHubRepository:
-    Type: String
-    AllowedPattern: '[A-Za-z0-9-_]+'
-    Default: GITHUB_REPO
+    Description: GitHub repository (e.g., username/repo)
   GitHubBranch:
     Type: String
-    AllowedPattern: '[A-Za-z0-9-/]+'
     Default: main
-  CodeBuildEnvironmentImage:
+    Description: Branch to build from
+  GitHubOAuthToken:
     Type: String
-    Default: 'aws/codebuild/standard:4.0'
+    NoEcho: true
+    Description: GitHub OAuth token for access
 
 Resources:
-  CodeBuildServiceRole:
-    Type: 'AWS::IAM::Role'
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -28,127 +25,47 @@ Resources:
           - Effect: Allow
             Principal:
               Service: codebuild.amazonaws.com
-            Action: 'sts:AssumeRole'
-      Policies:
-        - PolicyName: root
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Sid: CloudWatchLogsPolicy
-                Effect: Allow
-                Action:
-                  - 'logs:CreateLogGroup'
-                  - 'logs:CreateLogStream'
-                  - 'logs:PutLogEvents'
-                Resource: '*'
-              - Sid: S3GetObjectPolicy
-                Effect: Allow
-                Action:
-                  - 's3:GetObject'
-                  - 's3:GetObjectVersion'
-                Resource: '*'
-              - Sid: S3PutObjectPolicy
-                Effect: Allow
-                Action:
-                  - 's3:PutObject'
-                Resource: '*'
-              - Sid: S3BucketIdentity
-                Effect: Allow
-                Action:
-                  - 's3:GetBucketAcl'
-                  - 's3:GetBucketLocation'
-                Resource: '*'
-
-  CodeBuildSourceCredential:
-    Type: 'AWS::CodeBuild::SourceCredential'
-    Properties:
-      AuthType: PERSONAL_ACCESS_TOKEN
-      ServerType: GITHUB
-      Token: '{{resolve:secretsmanager:AWS_TOKEN:SecretString}}'
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess
 
   CodeBuildProject:
-    Type: 'AWS::CodeBuild::Project'
+    Type: AWS::CodeBuild::Project
     Properties:
-      Name: !Ref 'AWS::StackName'
-      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Name: NodeJsBuildProject
       Source:
         Type: GITHUB
-        Location: !Sub 'https://github.com/${GitHubOwner}/${GitHubRepository}.git'
-        BuildSpec: buildspec.yaml
-        Auth:
-          Type: OAUTH
-          Resource: !Ref CodeBuildSourceCredential
-      Artifacts:
-        Type: NO_ARTIFACTS
-      Triggers:
-        Webhook: true
-        FilterGroups:
-          - - Type: EVENT
-              Pattern: >
-                PULL_REQUEST_CREATED, PULL_REQUEST_UPDATED, PULL_REQUEST_REOPENED
-            - Type: BASE_REF
-              Pattern: !Sub '^refs/heads/${GitHubBranch}$'
+        Location: !Sub https://github.com/${GitHubRepo}
+        GitCloneDepth: 1
+        BuildSpec: buildspec.yml
       Environment:
-        Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: !Ref CodeBuildEnvironmentImage
+        Image: aws/codebuild/standard:7.0
+        Type: LINUX_CONTAINER
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
 
-  CodeBuildProjectDeployDev:
-    Type: 'AWS::CodeBuild::Project'
+  CodeDeployApplication:
+    Type: AWS::CodeDeploy::Application
     Properties:
-      Name: !Sub '${AWS::StackName}-deploy-dev'
-      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
-      Source:
-        Type: CODEPIPELINE
-        BuildSpec: deployspec.yaml
-      Artifacts:
-        Type: CODEPIPELINE
-      Environment:
-        Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: !Ref CodeBuildEnvironmentImage
-        EnvironmentVariables:
-          - Name: ENV_NAME
-            Value: dev
+      ApplicationName: NodeJsApp
+      ComputePlatform: Server
 
-  CodeBuildProjectDeployQa:
-    Type: 'AWS::CodeBuild::Project'
+  CodeDeployDeploymentGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
     Properties:
-      Name: !Sub '${AWS::StackName}-deploy-qa'
-      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
-      Source:
-        Type: CODEPIPELINE
-        BuildSpec: deployspec.yaml
-      Artifacts:
-        Type: CODEPIPELINE
-      Environment:
-        Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: !Ref CodeBuildEnvironmentImage
-        EnvironmentVariables:
-          - Name: ENV_NAME
-            Value: qa
+      ApplicationName: !Ref CodeDeployApplication
+      DeploymentGroupName: NodeJsDeploymentGroup
+      ServiceRoleArn: !GetAtt CodeBuildRole.Arn
+      DeploymentConfigName: CodeDeployDefault.OneAtATime
+      Ec2TagFilters:
+        - Key: Name
+          Value: NodeJsServer
+          Type: KEY_AND_VALUE
 
-  CodeBuildProjectDeployProd:
-    Type: 'AWS::CodeBuild::Project'
-    Properties:
-      Name: !Sub '${AWS::StackName}-deploy-prod'
-      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
-      Source:
-        Type: CODEPIPELINE
-        BuildSpec: deployspec.yaml
-      Artifacts:
-        Type: CODEPIPELINE
-      Environment:
-        Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: !Ref CodeBuildEnvironmentImage
-        EnvironmentVariables:
-          - Name: ENV_NAME
-            Value: prod
-
-  CodePipelineServiceRole:
-    Type: 'AWS::IAM::Role'
+  PipelineRole:
+    Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -156,147 +73,63 @@ Resources:
           - Effect: Allow
             Principal:
               Service: codepipeline.amazonaws.com
-            Action: 'sts:AssumeRole'
-      Policies:
-        - PolicyName: root
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Sid: CloudWatchLogsPolicy
-                Effect: Allow
-                Action:
-                  - 'logs:CreateLogGroup'
-                  - 'logs:CreateLogStream'
-                  - 'logs:PutLogEvents'
-                Resource: '*'
-              - Sid: S3GetObjectPolicy
-                Effect: Allow
-                Action:
-                  - 's3:GetObject'
-                  - 's3:GetObjectVersion'
-                Resource: '*'
-              - Sid: S3PutObjectPolicy
-                Effect: Allow
-                Action:
-                  - 's3:PutObject'
-                Resource: '*'
-              - Sid: S3BucketIdentity
-                Effect: Allow
-                Action:
-                  - 's3:GetBucketAcl'
-                  - 's3:GetBucketLocation'
-                Resource: '*'
-              - Sid: CodeBuildPolicy
-                Effect: Allow
-                Action:
-                  - 'codebuild:BatchGetBuilds'
-                  - 'codebuild:StartBuild'
-                Resource: '*'
-
-  CodePipelineArtifactStore:
-    Type: 'AWS::S3::Bucket'
-    Properties:
-      VersioningConfiguration:
-        Status: Enabled
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
 
   CodePipeline:
-    Type: 'AWS::CodePipeline::Pipeline'
+    Type: AWS::CodePipeline::Pipeline
     Properties:
-      Name: !Ref 'AWS::StackName'
-      RoleArn: !GetAtt CodePipelineServiceRole.Arn
+      RoleArn: !GetAtt PipelineRole.Arn
+      Name: NodeJsPipeline
       ArtifactStore:
         Type: S3
-        Location: !Ref CodePipelineArtifactStore
+        Location: !Sub "${AWS::StackName}-artifacts"
       Stages:
         - Name: Source
           Actions:
-            - Name: Source
+            - Name: GitHubSource
               ActionTypeId:
                 Category: Source
                 Owner: ThirdParty
-                Version: 1
                 Provider: GitHub
-              Configuration:
-                Owner: !Ref GitHubOwner
-                Repo: !Ref GitHubRepository
-                Branch: !Ref GitHubBranch
-                PollForSourceChanges: false
-                OAuthToken: '{{resolve:secretsmanager:AWS_TOKEN:SecretString}}'
+                Version: 1
               OutputArtifacts:
-                - Name: SourceCode
+                - Name: SourceOutput
+              Configuration:
+                Owner: !Select [0, !Split ["/", !Ref GitHubRepo]]
+                Repo: !Select [1, !Split ["/", !Ref GitHubRepo]]
+                Branch: !Ref GitHubBranch
+                OAuthToken: !Ref GitHubOAuthToken
+              RunOrder: 1
+
         - Name: Build
           Actions:
-            - Name: Build
+            - Name: CodeBuild
               ActionTypeId:
                 Category: Build
                 Owner: AWS
                 Provider: CodeBuild
-                Version: '1'
-              Configuration:
-                ProjectName: !Ref CodeBuildProject
+                Version: 1
+              InputArtifacts:
+                - Name: SourceOutput
               OutputArtifacts:
                 - Name: BuildOutput
-              InputArtifacts:
-                - Name: SourceCode
-        - Name: Dev
-          Actions:
-            - Name: Deploy
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Provider: CodeBuild
-                Version: '1'
               Configuration:
-                ProjectName: !Ref CodeBuildProjectDeployDev
-              InputArtifacts:
-                - Name: BuildOutput
-        - Name: Qa
-          Actions:
-            - Name: Deploy
+                ProjectName: !Ref CodeBuildProject
               RunOrder: 1
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Provider: CodeBuild
-                Version: '1'
-              Configuration:
-                ProjectName: !Ref CodeBuildProjectDeployQa
-              InputArtifacts:
-                - Name: BuildOutput
-            - Name: Approval
-              RunOrder: 2
-              ActionTypeId:
-                Category: Approval
-                Owner: AWS
-                Provider: Manual
-                Version: '1'
-              Configuration:
-                CustomData: Approve or Reject this change after running tests
-        - Name: Prod
-          Actions:
-            - Name: Deploy
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Provider: CodeBuild
-                Version: '1'
-              Configuration:
-                ProjectName: !Ref CodeBuildProjectDeployProd
-              InputArtifacts:
-                - Name: BuildOutput
 
-  CodePipelineWebhook:
-    Type: 'AWS::CodePipeline::Webhook'
-    Properties:
-      Authentication: GITHUB_HMAC
-      AuthenticationConfiguration:
-        SecretToken: '{{resolve:secretsmanager:AWS_TOKEN:SecretString}}'
-      RegisterWithThirdParty: true
-      Filters:
-        - JsonPath: $.ref
-          MatchEquals: !Sub 'refs/heads/${GitHubBranch}'
-        - JsonPath: $.repository.name
-          MatchEquals: !Ref GitHubRepository
-      TargetPipeline: !Ref CodePipeline
-      TargetAction: Source
-      TargetPipelineVersion: !GetAtt CodePipeline.Version
+        - Name: Deploy
+          Actions:
+            - Name: CodeDeploy
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CodeDeploy
+                Version: 1
+              InputArtifacts:
+                - Name: BuildOutput
+              Configuration:
+                ApplicationName: !Ref CodeDeployApplication
+                DeploymentGroupName: !Ref CodeDeployDeploymentGroup
+              RunOrder: 1
