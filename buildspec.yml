@@ -1,10 +1,19 @@
 version: 0.2
-       
+
 phases:
-    build:
-      commands:
-        - echo We are in Build Phasewsrr
-        - echo Build started on `date` 
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      - echo Installing dependencies...
+      - npm install
+
+  build:
+    commands:
+      - echo Build started on `date`
+      - npm run build || echo No build script defined
+
 artifacts:
-   files:
-     - '**/*'
+  files:
+    - '**/*'
+  discard-paths: no
