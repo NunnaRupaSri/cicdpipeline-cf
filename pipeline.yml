@@ -265,3 +265,4 @@ Resources:
           ./install auto
           systemctl start codedeploy-agent
           systemctl enable codedeploy-agent
+          yum remove nginx -y
