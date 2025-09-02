@@ -16,7 +16,7 @@ phases:
       - echo Build started on `date`
       - npm run build || echo No build script defined
       - mkdir -p /home/ec2-user/node-app/
-      - cp index.html /home/ec2-user/node-app/
+      - cp index.html /usr/share/nginx/html/
       
 artifacts:
   files:
