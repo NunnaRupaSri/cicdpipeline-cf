@@ -5,15 +5,25 @@ phases:
     runtime-versions:
       nodejs: 18
     commands:
-      - echo Installing dependencies...
+      - echo Installing dependencies
       - npm install
+      - echo Installing NGINX
+      - sudo apt-get update
+      - sudo apt-get install nginx -y
+
   build:
     commands:
       - echo Build started on `date`
-      - npm run build || echo No build script defined
+      - cp index.html /var/www/html/
+      - echo Starting Node.js app
+      - npm run build || echo "No build step defined"
 
-      
+  post_build:
+    commands:
+      - echo Build completed on `date`
+
 artifacts:
   files:
     - '**/*'
-  discard-paths: no
+    
+
