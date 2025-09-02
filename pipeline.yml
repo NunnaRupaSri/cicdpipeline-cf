@@ -95,7 +95,8 @@ Resources:
       ApplicationName: !Ref CodeDeployApplication
       DeploymentGroupName: NodeJsDeploymentGroup
       ServiceRoleArn: !GetAtt CodeDeployRole.Arn
-      DeploymentConfigName: CodeDeployDefault.OneAtATime
+      #DeploymentConfigName: CodeDeployDefault.OneAtATime
+      DeploymentConfigName: CodeDeployDefault.HalfAtATime
       Ec2TagFilters:
         - Key: Name
           Value: NodeJsServer
@@ -152,6 +153,7 @@ Resources:
                   - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:application:NodeJsApp'
                   - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:NodeJsApp/NodeJsDeploymentGroup'
                   - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.OneAtATime'
+                  - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.HalfAtATime'
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
