@@ -147,7 +147,10 @@ Resources:
                   - codedeploy:RegisterApplicationRevision
                   - codedeploy:GetApplicationRevision
                   - codedeploy:GetDeploymentGroup
-                Resource: !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:NodeJsApp/NodeJsDeploymentGroup'
+                   - codedeploy:GetDeploymentConfig
+                Resource:
+                  - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:NodeJsApp/NodeJsDeploymentGroup'
+                  - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.OneAtATime'
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
