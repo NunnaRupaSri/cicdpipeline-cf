@@ -12,7 +12,7 @@ phases:
     commands:
       - echo Build started on `date`
       - npm run build || echo No build script defined
-      - mkdir /home/ec2-user/node-app/
+      - mkdir -p /home/ec2-user/node-app/
       - cp index.html /home/ec2-user/node-app/
       
 artifacts:
