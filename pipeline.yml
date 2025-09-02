@@ -44,11 +44,12 @@ Resources:
                   - s3:GetObjectVersion
                   - s3:GetBucketAcl
                   - s3:GetBucketLocation
-                Resource: !Sub 'arn:aws:s3:::${ArtifactBucket}/*'
+                Resource: !Sub 'arn:aws:s3:::${AWS::StackName}-artifacts/*'
+
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: NodeJsBuildProjectz
+      Name: NodeJsBuildProjects
       Source:
         Type: CODEPIPELINE
         BuildSpec: buildspec.yml
@@ -115,7 +116,18 @@ Resources:
                   - s3:GetObjectVersion
                   - s3:GetBucketAcl
                   - s3:GetBucketLocation
-                Resource: !Sub 'arn:aws:s3:::${ArtifactBucket}/*'     
+                Resource: !Sub 'arn:aws:s3:::${AWS::StackName}-artifacts/*'
+        - PolicyName: PipelineCodeBuildAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                  - codebuild:BatchGetProjects
+                Resource: !GetAtt CodeBuildProject.Arn
+
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
@@ -209,7 +221,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t2.micro
-      ImageId: ami-0ca3fe9992272540b
+      ImageId: ami-0ca3fe9992272540b # Make sure this AMI exists in your region
       IamInstanceProfile: !Ref EC2InstanceProfile
       Tags:
         - Key: Name
@@ -223,6 +235,9 @@ Resources:
           yum install -y ruby wget git
           curl -sL https://rpm.nodesource.com/setup_18.x | bash -
           yum install -y nodejs
+          yum install -y nginx
+          systemctl start nginx
+          systemctl enable nginx
           cd /home/ec2-user
           wget https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/latest/install
           chmod +x ./install
