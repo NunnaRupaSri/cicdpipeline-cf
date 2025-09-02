@@ -14,6 +14,11 @@ Parameters:
     NoEcho: true
     Description: GitHub OAuth token for access
 Resources:
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub: ${AWS::StackName}-artifacts
   CodeBuildRole:
     Type: AWS::IAM::Role
     Properties:
@@ -31,10 +36,7 @@ Resources:
     Properties:
       Name: NodeJsBuildProject
       Source:
-        Type: GITHUB
-        Location:
-          Fn::Sub: https://github.com/${GitHubRepo}
-        GitCloneDepth: 1
+        Type: CODEPIPELINE
         BuildSpec: buildspec.yml
       Environment:
         ComputeType: BUILD_GENERAL1_SMALL
@@ -51,6 +53,18 @@ Resources:
     Properties:
       ApplicationName: NodeJsApp
       ComputePlatform: Server
+  CodeDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: codedeploy.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole
   CodeDeployDeploymentGroup:
     Type: AWS::CodeDeploy::DeploymentGroup
     Properties:
@@ -59,7 +73,7 @@ Resources:
       DeploymentGroupName: NodeJsDeploymentGroup
       ServiceRoleArn:
         Fn::GetAtt:
-        - CodeBuildRole
+        - CodeDeployRole
         - Arn
       DeploymentConfigName: CodeDeployDefault.OneAtATime
       Ec2TagFilters:
@@ -85,11 +99,10 @@ Resources:
         Fn::GetAtt:
         - PipelineRole
         - Arn
-      Name: NodeJsPipeline
       ArtifactStore:
         Type: S3
         Location:
-          Fn::Sub: ${AWS::StackName}-artifacts
+          Ref: ArtifactBucket
       Stages:
       - Name: Source
         Actions:
