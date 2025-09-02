@@ -259,10 +259,6 @@ Resources:
           yum install -y ruby wget git
           curl -sL https://rpm.nodesource.com/setup_18.x | bash -
           yum install -y nodejs
-          yum install -y nginx
-          systemctl start nginx
-          systemctl enable nginx
-          systemctl stop nginx
           cd /home/ec2-user
           wget https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/latest/install
           chmod +x ./install
