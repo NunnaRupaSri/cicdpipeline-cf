@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CI/CD Pipeline for Node.js App using GitHub, CodeBuild, CodeDeploy, CodePipeline,
+Description: Node.js CI/CD pipeline using GitHub, CodeBuild, CodeDeploy, CodePipeline,
   and EC2
 Parameters:
   GitHubRepo:
@@ -77,7 +77,7 @@ Resources:
             Service: codepipeline.amazonaws.com
           Action: sts:AssumeRole
       ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
+      - arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
