@@ -214,7 +214,7 @@ Resources:
             \ update -y\n                      yum install -y ruby wget git\n    \
             \                  curl -sL https://rpm.nodesource.com/setup_18.x | bash\
             \ -\n                      yum install -y nodejs\n                   \
-            \   cd /home/ec2-user\n                      wget https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/latest/install\n\
+            \   cd /home/ec2-user\n                      wget https://aws-codedeploy-${AWS::ca-central-1}.s3.${AWS::ca-central-1}.amazonaws.com/latest/install\n\
             \                      chmod +x ./install\n                      ./install\
             \ auto\n                      systemctl start codedeploy-agent\n     \
             \                 systemctl enable codedeploy-agent\n                \
