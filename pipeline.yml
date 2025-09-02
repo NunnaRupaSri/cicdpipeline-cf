@@ -136,7 +136,18 @@ Resources:
                   - codebuild:BatchGetBuilds
                   - codebuild:BatchGetProjects
                 Resource: !GetAtt CodeBuildProject.Arn
-
+        - PolicyName: PipelineCodeDeployAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codedeploy:CreateDeployment
+                  - codedeploy:GetDeployment
+                  - codedeploy:RegisterApplicationRevision
+                  - codedeploy:GetApplicationRevision
+                  - codedeploy:GetDeploymentGroup
+                Resource: !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:NodeJsApp/NodeJsDeploymentGroup'
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
