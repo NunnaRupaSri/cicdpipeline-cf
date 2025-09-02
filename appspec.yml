@@ -1,8 +1,8 @@
 version: 0.0
 os: linux
 files:
-  - source: /
-    destination: /home/ec2-user/node-app
+  - source: index.html
+    destination: /usr/share/nginx/html/
 
 hooks:
   AfterInstall:
