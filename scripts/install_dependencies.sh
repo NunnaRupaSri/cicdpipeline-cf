@@ -1,3 +1,3 @@
 #!/bin/bash
-cd /home/ec2-user/node-app/app.js
+cd /home/ec2-user/node-app
 npm install
