@@ -7,8 +7,7 @@ phases:
     commands:
       - echo Installing dependencies
       - npm install
-      - echo Installing NGINX
-      - sudo yum update -y
+      - echo Installing NGINx
       - sudo yum install nginx -y
 
   build:
