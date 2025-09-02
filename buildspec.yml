@@ -5,24 +5,27 @@ phases:
     runtime-versions:
       nodejs: 18
     commands:
-      - echo Installing dependencies
+      - echo "Updating package list"
+      - sudo apt-get update
+      - echo "Installing NGINX"
+      - sudo apt-get install nginx -y
+      - echo "Installing Node.js dependencies"
       - npm install
-      - echo Installing NGINx
-      - sudo yum install nginx -y
 
   build:
     commands:
-      - echo Build started on `date`
+      - echo "Build started on `date`"
+      - echo "Copying static files to NGINX directory"
       - cp index.html /var/www/html/
-      - echo Starting Node.js app
+      - echo "Running build script (if defined)"
       - npm run build || echo "No build step defined"
 
   post_build:
     commands:
-      - echo Build completed on `date`
+      - echo "Build completed on `date`"
 
 artifacts:
   files:
     - '**/*'
-    
+
 
