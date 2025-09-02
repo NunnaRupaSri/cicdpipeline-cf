@@ -88,6 +88,19 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole
+        
+CustomLinearDeploymentConfig:
+  Type: AWS::CodeDeploy::DeploymentConfig
+  Properties:
+    DeploymentConfigName: Linear25Percent
+    MinimumHealthyHosts:
+      Type: FLEET_PERCENT
+      Value: 75
+    TrafficRoutingConfig:
+      Type: TimeBasedCanary
+      TimeBasedCanary:
+        CanaryPercentage: 25
+        CanaryInterval: 5
 
   CodeDeployDeploymentGroup:
     Type: AWS::CodeDeploy::DeploymentGroup
@@ -96,7 +109,8 @@ Resources:
       DeploymentGroupName: NodeJsDeploymentGroup
       ServiceRoleArn: !GetAtt CodeDeployRole.Arn
       #DeploymentConfigName: CodeDeployDefault.OneAtATime
-      DeploymentConfigName: CodeDeployDefault.HalfAtATime
+      #DeploymentConfigName: CodeDeployDefault.HalfAtATime
+      DeploymentConfigName: !Ref CustomLinearDeploymentConfig
       Ec2TagFilters:
         - Key: Name
           Value: NodeJsServer
@@ -152,8 +166,9 @@ Resources:
                 Resource:
                   - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:application:NodeJsApp'
                   - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:NodeJsApp/NodeJsDeploymentGroup'
-                  - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.OneAtATime'
-                  - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.HalfAtATime'
+                  #- !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.OneAtATime'
+                  #- !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:CodeDeployDefault.HalfAtATime'
+                  - !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentconfig:Linear25Percent'
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
