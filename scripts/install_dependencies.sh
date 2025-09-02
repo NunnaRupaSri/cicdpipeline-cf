@@ -1,7 +1,4 @@
 #!/bin/bash
-cd /home/ec2-user/node-app
-if [ -f package.json ]; then
-  npm install
-else
-  echo "package.json not found, skipping npm install"
-fi
+sudo amazon-linux-extras install nginx1 -y
+sudo systemctl start nginx
+sudo systemctl enable nginx
