@@ -260,9 +260,12 @@ Resources:
           curl -sL https://rpm.nodesource.com/setup_18.x | bash -
           yum install -y nodejs
           cd /home/ec2-user
+          yum install nginx -y
+          systemctl start nginx
+          systemctl enable nginx
           wget https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/latest/install
           chmod +x ./install
           ./install auto
           systemctl start codedeploy-agent
           systemctl enable codedeploy-agent
-          yum remove nginx -y
+          
