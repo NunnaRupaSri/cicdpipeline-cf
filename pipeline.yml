@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CI/CD Pipeline for Node.js App using GitHub, CodeBuild, CodeDeploy, and CodePipeline
-
+Description: CI/CD Pipeline for Node.js App using GitHub, CodeBuild, CodeDeploy, CodePipeline,
+  and EC2
 Parameters:
   GitHubRepo:
     Type: String
@@ -13,123 +13,196 @@ Parameters:
     Type: String
     NoEcho: true
     Description: GitHub OAuth token for access
-
 Resources:
-
   CodeBuildRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Effect: Allow
-            Principal:
-              Service: codebuild.amazonaws.com
-            Action: sts:AssumeRole
+        - Effect: Allow
+          Principal:
+            Service: codebuild.amazonaws.com
+          Action: sts:AssumeRole
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess
-
+      - arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: NodeJsBuildProject
       Source:
         Type: GITHUB
-        Location: !Sub https://github.com/${GitHubRepo}
+        Location:
+          Fn::Sub: https://github.com/${GitHubRepo}
         GitCloneDepth: 1
         BuildSpec: buildspec.yml
       Environment:
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/standard:7.0
         Type: LINUX_CONTAINER
-      ServiceRole: !GetAtt CodeBuildRole.Arn
+      ServiceRole:
+        Fn::GetAtt:
+        - CodeBuildRole
+        - Arn
       Artifacts:
         Type: CODEPIPELINE
-
   CodeDeployApplication:
     Type: AWS::CodeDeploy::Application
     Properties:
       ApplicationName: NodeJsApp
       ComputePlatform: Server
-
   CodeDeployDeploymentGroup:
     Type: AWS::CodeDeploy::DeploymentGroup
     Properties:
-      ApplicationName: !Ref CodeDeployApplication
+      ApplicationName:
+        Ref: CodeDeployApplication
       DeploymentGroupName: NodeJsDeploymentGroup
-      ServiceRoleArn: !GetAtt CodeBuildRole.Arn
+      ServiceRoleArn:
+        Fn::GetAtt:
+        - CodeBuildRole
+        - Arn
       DeploymentConfigName: CodeDeployDefault.OneAtATime
       Ec2TagFilters:
-        - Key: Name
-          Value: NodeJsServer
-          Type: KEY_AND_VALUE
-
+      - Key: Name
+        Value: NodeJsServer
+        Type: KEY_AND_VALUE
   PipelineRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Effect: Allow
-            Principal:
-              Service: codepipeline.amazonaws.com
-            Action: sts:AssumeRole
+        - Effect: Allow
+          Principal:
+            Service: codepipeline.amazonaws.com
+          Action: sts:AssumeRole
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
-
+      - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
   CodePipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
-      RoleArn: !GetAtt PipelineRole.Arn
+      RoleArn:
+        Fn::GetAtt:
+        - PipelineRole
+        - Arn
       Name: NodeJsPipeline
       ArtifactStore:
         Type: S3
-        Location: !Sub "${AWS::StackName}-artifacts"
+        Location:
+          Fn::Sub: ${AWS::StackName}-artifacts
       Stages:
-        - Name: Source
-          Actions:
-            - Name: GitHubSource
-              ActionTypeId:
-                Category: Source
-                Owner: ThirdParty
-                Provider: GitHub
-                Version: 1
-              OutputArtifacts:
-                - Name: SourceOutput
-              Configuration:
-                Owner: !Select [0, !Split ["/", !Ref GitHubRepo]]
-                Repo: !Select [1, !Split ["/", !Ref GitHubRepo]]
-                Branch: !Ref GitHubBranch
-                OAuthToken: !Ref GitHubOAuthToken
-              RunOrder: 1
-
-        - Name: Build
-          Actions:
-            - Name: CodeBuild
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Provider: CodeBuild
-                Version: 1
-              InputArtifacts:
-                - Name: SourceOutput
-              OutputArtifacts:
-                - Name: BuildOutput
-              Configuration:
-                ProjectName: !Ref CodeBuildProject
-              RunOrder: 1
-
-        - Name: Deploy
-          Actions:
-            - Name: CodeDeploy
-              ActionTypeId:
-                Category: Deploy
-                Owner: AWS
-                Provider: CodeDeploy
-                Version: 1
-              InputArtifacts:
-                - Name: BuildOutput
-              Configuration:
-                ApplicationName: !Ref CodeDeployApplication
-                DeploymentGroupName: !Ref CodeDeployDeploymentGroup
-              RunOrder: 1
+      - Name: Source
+        Actions:
+        - Name: GitHubSource
+          ActionTypeId:
+            Category: Source
+            Owner: ThirdParty
+            Provider: GitHub
+            Version: '1'
+          OutputArtifacts:
+          - Name: SourceOutput
+          Configuration:
+            Owner:
+              Fn::Select:
+              - 0
+              - Fn::Split:
+                - /
+                - Ref: GitHubRepo
+            Repo:
+              Fn::Select:
+              - 1
+              - Fn::Split:
+                - /
+                - Ref: GitHubRepo
+            Branch:
+              Ref: GitHubBranch
+            OAuthToken:
+              Ref: GitHubOAuthToken
+          RunOrder: 1
+      - Name: Build
+        Actions:
+        - Name: CodeBuild
+          ActionTypeId:
+            Category: Build
+            Owner: AWS
+            Provider: CodeBuild
+            Version: '1'
+          InputArtifacts:
+          - Name: SourceOutput
+          OutputArtifacts:
+          - Name: BuildOutput
+          Configuration:
+            ProjectName:
+              Ref: CodeBuildProject
+          RunOrder: 1
+      - Name: Deploy
+        Actions:
+        - Name: CodeDeploy
+          ActionTypeId:
+            Category: Deploy
+            Owner: AWS
+            Provider: CodeDeploy
+            Version: '1'
+          InputArtifacts:
+          - Name: BuildOutput
+          Configuration:
+            ApplicationName:
+              Ref: CodeDeployApplication
+            DeploymentGroupName:
+              Ref: CodeDeployDeploymentGroup
+          RunOrder: 1
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ec2.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AmazonEC2FullAccess
+      - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      - arn:aws:iam::aws:policy/AWSCodeDeployFullAccess
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+      - Ref: EC2InstanceRole
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH and HTTP access
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+  NodeJsEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-0c02fb55956c7d316
+      IamInstanceProfile:
+        Ref: EC2InstanceProfile
+      Tags:
+      - Key: Name
+        Value: NodeJsServer
+      SecurityGroups:
+      - Ref: InstanceSecurityGroup
+      UserData:
+        Fn::Base64:
+          Fn::Sub: "\n                      #!/bin/bash\n                      yum\
+            \ update -y\n                      yum install -y ruby wget git\n    \
+            \                  curl -sL https://rpm.nodesource.com/setup_18.x | bash\
+            \ -\n                      yum install -y nodejs\n                   \
+            \   cd /home/ec2-user\n                      wget https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/latest/install\n\
+            \                      chmod +x ./install\n                      ./install\
+            \ auto\n                      systemctl start codedeploy-agent\n     \
+            \                 systemctl enable codedeploy-agent\n                \
+            \    "
